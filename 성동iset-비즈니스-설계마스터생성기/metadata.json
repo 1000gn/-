@@ -1,0 +1,6 @@
+{
+  "name": "Copy of Copy of BEST-5-최광석-크리에이티브 캔버스",
+  "description": "성동ISET 미래전략기획실 & 조선해양 디자인 스위트: Vercel Labs agent-browser 기반 자율 해운시황 크롤링, AI 선박·플랜트 CAD 설계, 공사비 시방서 문서화 및 C-Suite 이사회 브리핑",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

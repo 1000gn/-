@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="성동ISET 미래전략기획실 & 조선해양 디자인 스위트: Vercel Labs agent-browser 기반 자율 해운시황 크롤링, AI 선박·플랜트 CAD 설계, 공사비 시방서 문서화 및 C-Suite 이사회 브리핑" />
+    <meta name="keywords" content="AI, 인공지능, 생성 AI, 크리에이티브 캔버스, 디자인, 스케치 변환, 이미지 생성, 이미지 융합, 건축, 인테리어, 제품 디자인, 스마트팜, 에너지 계산, 건축 문서, AI 회계, 360 뷰, 동영상 생성, 스토리텔링" />
+    <title>크리에이티브 캔버스 - 최적화 버전</title>
+
+    <!-- External Dependencies (Scripts with no ES modules or large assets) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js.optimized/0.2.0/gif.js"></script>
+
+    <!-- PDF.js for client-side text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.5.136/pdf.min.mjs" type="module"></script>
+    <script type="module">
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.5.136/pdf.worker.min.mjs';
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Noto Sans KR', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        perspective: 1000px;
+      }
+      .font-bold-header {
+        font-weight: 900;
+      }
+      /* 새로 추가된 스타일 */
+      .prompt-enhancer {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 15px 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      }
+      .prompt-section {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-left: 4px solid #4285f4;
+      }
+      .quality-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+      .quality-high { background: #34a853; color: white; }
+      .quality-medium { background: #fbbc05; color: black; }
+      .quality-low { background: #ea4335; color: white; }
+      .api-status {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 10px 15px;
+        border-radius: 20px;
+        color: white;
+        font-weight: bold;
+        z-index: 1000;
+      }
+      .status-good { background-color: #34a853; }
+      .status-warning { background-color: #fbbc05; }
+      .status-error { background-color: #ea4335; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+
+    <script>
+      // ============================================================
+      // CAD 설계 · 렌더링 품질 고도화 엔진 규약 (designEngine 규약)
+      // ============================================================
+      const CAD_QUALITY = `
+[도면 품질 규약 — 반드시 준수]
+- 선 굵기 3단계 위계: 외곽 윤곽(굵게) > 부재선(중간) > 치수선·신호선(가늘게)
+- 제3각법 투영, 중심선(일점쇄선), 숨은선(파선), 단면 해칭(hatching)을 도법 규약대로 정확히
+- 문자는 기술 도면용 산세리프(ISO 3098 스타일), 치수는 mm 단위, 우상단에 축척 표기
+- 도면 우측 하단에 제란(Title Block): 명칭·선종/설비명·주요치수·도면번호·축척·작도일
+- 전체적으로 정돈된 A1 도면지 레이아웃, 여백 균형 유지
+- 흐릿한 선, 왜곡된 기하학, 손글씨체 텍스트, 비례가 무너진 선형 금지`;
+
+      const RENDER_QUALITY = `
+[렌더링 품질 규약 — 반드시 준수]
+- 물리 기반 렌더링(PBR) 재질, 사실적인 반사·굴절·간접광·소프트 섀도
+- 초고해상도, 정확한 원근(수직선 수직 유지), 카메라 피사계심도 사실적 재현
+- 인공적 CG 느낌, 뭉개진 텍스처, 비정상적 스케일의 사람/물체, 뒤틀린 기하학 금지`;
+
+      const CAD_STYLES = {
+        "blueprint": "청사진(blueprint) 스타일: 짙은 프러시안 블루(#0B3D66) 배경에 순백의 선과 문자, 제도 필름의 균일한 선 느낌",
+        "white-technical": "백색 도면지 배경에 순흑 라인아트, 음영 없는 완전 기술 도면 스타일",
+        "iso-color": "등측도(isometric) 컬러 도면: 30도 아이소메트릭 시점, 구역별 파스텔 채색, 연한 그림자, 라벨 리더선"
+      };
+
+      // ================================================
+      // 핵심 개선 1: 프롬프트 엔지니어링 최적화
+      // ================================================
+      const PROMPT_TEMPLATES = {
+        // 1. 선박 일반배치도 (General Arrangement Plan)
+        vesselCad: (userInput) => {
+          return `당신은 선박 기본설계 전문가입니다. 아래 사양의 선박 일반배치도(General Arrangement Plan)를 정밀 기술 도면으로 작도하십시오.
+
+■ 선박 요구사양: ${userInput}
+■ 도면 구성 (한 장의 도면에 배치)
+1. 측면도(PROFILE): 도면 상단 전폭 — 선체 라인, 상부구조 레벨, 마스트, 화물설비, 프로펠러·러더, 흘수마크 표기
+2. 평면도(PLAN): 하단 좌측 — 갑판 배치, 화물창 해치 개구, 접안설비
+3. 중앙횡단면(MIDSHIP SECTION): 하단 우측 — 이중저·이중측 구조, 화물창 단면, 강재 부재 해칭
+4. 격벽 위치와 화물창·기관실·연료탱크·거주구 구획, 프레임 번호 주석
+5. 우측 제란: 선명·선종·주요치수 테이블
+
+■ 작도 규범
+- 축척 1:400 수준의 감각으로 선형 비례를 정확하게 (길이 대비 폭·깊이 비율 왜곡 절대 금지)
+- 스타일: ${CAD_STYLES["blueprint"]}
+${CAD_QUALITY}`;
+        },
+
+        // 2. 선박 중앙횡단면도 (Midship Section)
+        midshipSection: (userInput) => {
+          return `선박 중앙횡단면도(Midship Section)를 상세 작도하십시오.
+대상 사양: ${userInput}
+
+■ 표현 요구
+- 이중저(Double Bottom)·이중측(Double Side) 구조, 종강재·횡강재 골격을 단면으로 표현
+- 빌지키일, 화물창 바닥 라이너, 우현/좌현 대칭 구조
+- 주요 부재 치수 주석, 해칭으로 절단 단면 표현
+- 스타일: ${CAD_STYLES["white-technical"]}
+${CAD_QUALITY}`;
+        },
+
+        // 3. 플랜트 배관계장도 (P&ID)
+        plantPid: (userInput) => {
+          return `플랜트 배관계장도(P&ID)를 ISO 10628/KS 규격 심볼로 작도하십시오.
+
+■ 공정 범위: ${userInput}
+■ 표기 요구
+- 주요 기기: 펌프·열교환기·탱크·압축기 — 태그번호 부여(예: P-101, E-201, T-301)
+- 계장: 온도(TI/TC)·압력(PI/PC)·유량(FI/FC)·레벨(LI/LC) 전송기와 제어밸브 신호 루프
+- 배관: 주배관 굵은 실선, 계장 신호선 점선, 관경(DN)·재질·압력등급 주석
+- 우측에 범례(Legend)와 기기 리스트 테이블
+- 스타일: ${CAD_STYLES["white-technical"]}
+${CAD_QUALITY}`;
+        },
+
+        // 4. 건축 포토리얼리스틱 익스테리어 렌더링
+        architecturalRender: (userInput) => {
+          return `건축 프로젝트의 포토리얼리스틱 익스테리어 렌더링을 생성하십시오.
+
+■ 프로젝트 및 요구: ${userInput}
+■ 카메라: 풀프레임 24mm 광각, 아이레벨(1.6m), 3/4 시점, 2점 원근
+■ 조명: 골든아워(16:30) 자연광, 물리적으로 정확한 태양 고도각과 긴 그림자, 유리 커튼월에 하늘 반사
+■ 재질: 저반사 로이유리, 노출 콘크리트, 알루미늄 루버 — PBR 기반 사실적 질감
+■ 환경: 보행자·차량 스케일 포함, 주변 조경 및 수경공간 연계
+${RENDER_QUALITY}`;
+        },
+
+        // 5. 인테리어 포토리얼리스틱 렌더링
+        interiorRender: (userInput) => {
+          return `${userInput} 공간의 포토리얼리스틱 인테리어 렌더링.
+■ 카메라: 20mm 광각, 아이레벨, 원근 1점 소실
+■ 조명: 자연채광창 + 건축화 간접 조명 레이어링, 글로벌 일루미네이션
+■ 재질: 패브릭 질감, 원목 마루 결, 헤어라인 금속 마감 디테일
+■ 소품: 인간 스케일감을 주는 가구·조명·그린 플랜트 소품 배치
+${RENDER_QUALITY}`;
+        },
+
+        // 6. 제품 디자인 렌더링
+        productDesign: (userInput) => {
+          return `제품 디자인 컨셉 렌더링: ${userInput}
+■ 카메라: 85mm 매크로, 3/4 앵글(45도), 얕은 피사계심도
+■ 조명: 스튜디오 3점 조명, 대형 소프트박스 주광 + 림라이트, 제품 에지 하이라이트
+■ 재질: 프리미엄 메탈 및 무광 세라믹 피니시 — 스크래치 없는 정밀 마감
+■ 배경: 깔끔한 미니멀 인피니티 스튜디오 배경
+${RENDER_QUALITY}`;
+        },
+
+        // 7. 스마트팜·에너지 계산
+        smartFarm: (userInput) => {
+          return `스마트팜 시스템 설계도를 생성해 주세요.
+요구사항: ${userInput}
+포함 요소: 
+- 온실 구조 및 태양광 BIPV 루프
+- 환경 계측 센서망 (온도, 습도, CO2, 토양 수분)
+- 양액 자동 관개 및 순환 시스템
+- 폐열 회수 및 ESS 에너지 최적화 시스템
+- 실시간 관제 데이터 대시보드
+스타일: 기술 인포그래픽 및 시스템 플로우 다이어그램
+${CAD_QUALITY}`;
+        }
+      };
+
+      // ================================================
+      // 핵심 개선 2: API 호출 최적화 (재시도 로직 포함)
+      // ================================================
+      class GeminiAPIClient {
+        constructor(apiKey) {
+          this.apiKey = apiKey;
+          this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent';
+          this.maxRetries = 3;
+          this.retryDelay = 1000; // 1초
+        }
+
+        async generateImage(prompt, options = {}) {
+          const {
+            width = 1024,
+            height = 1024,
+            quality = 'high',
+            style = 'realistic',
+            format = 'png'
+          } = options;
+
+          const requestBody = {
+            contents: [{
+              parts: [{
+                text: prompt
+              }]
+            }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 4000,
+              // 이미지 생성용 특정 설정 (Gemini Pro는 텍스트 응답만 가능)
+              responseMimeType: 'application/json'
+            }
+          };
+
+          // 재시도 로직
+          for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+            try {
+              const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+              });
+
+              if (!response.ok) {
+                throw new Error(`API 요청 실패: ${response.status}`);
+              }
+
+              const data = await response.json();
+              
+              // 성공 시 결과 반환
+              return this.processApiResponse(data, { width, height, quality, style, format });
+
+            } catch (error) {
+              console.error(`시도 ${attempt}/${this.maxRetries} 실패:`, error);
+              
+              if (attempt === this.maxRetries) {
+                throw new Error('모든 재시도 후 API 호출 실패');
+              }
+              
+              // 재시도 전 지연
+              await new Promise(resolve => setTimeout(resolve, this.retryDelay * attempt));
+            }
+          }
+        }
+
+        processApiResponse(data, options) {
+          // Gemini API 응답 처리
+          if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+            throw new Error('API 응답 형식이 올바르지 않습니다');
+          }
+
+          const content = data.candidates[0].content;
+          
+          // 이미지 생성 요청은 실제로는 별도의 이미지 생성 API가 필요할 수 있음
+          // 여기서는 프롬프트 최적화 결과를 반환
+          return {
+            success: true,
+            prompt: content.parts[0]?.text || '생성된 프롬프트',
+            options: options,
+            timestamp: new Date().toISOString(),
+            quality: this.assessQuality(content.parts[0]?.text || '')
+          };
+        }
+
+        assessQuality(text) {
+          // 간단한 품질 평가 로직
+          const hasDimensions = /4K|8K|1024|2048/.test(text);
+          const hasStyleKeywords = /photo|realistic|rendering|detail/.test(text.toLowerCase());
+          const hasTechnicalSpecs = /view|angle|lighting|material/.test(text.toLowerCase());
+          
+          if (hasDimensions && hasStyleKeywords && hasTechnicalSpecs) return 'high';
+          if (hasStyleKeywords || hasTechnicalSpecs) return 'medium';
+          return 'low';
+        }
+      }
+
+      // ================================================
+      // 핵심 개선 3: 결과물 통합 및 내보내기 강화
+      // ================================================
+      class ResultProcessor {
+        constructor() {
+          this.results = [];
+          this.maxResults = 10;
+        }
+
+        addResult(result) {
+          this.results.unshift(result);
+          if (this.results.length > this.maxResults) {
+            this.results.pop();
+          }
+          this.updateUI();
+        }
+
+        async exportToPDF() {
+          const { jsPDF } = window.jspdf;
+
+          // html2canvas를 활용한 고해상도 한국어 PDF 생성 (지원 시)
+          if (window.html2canvas) {
+            const container = document.createElement('div');
+            container.style.position = 'fixed';
+            container.style.left = '-9999px';
+            container.style.top = '0';
+            container.style.width = '794px';
+            container.style.padding = '36px';
+            container.style.background = '#ffffff';
+            container.style.color = '#0f172a';
+            container.style.fontFamily = "'Noto Sans KR', sans-serif";
+            container.style.boxSizing = 'border-box';
+
+            let itemsHtml = '';
+            this.results.forEach((result, index) => {
+              const qualityColor = result.quality === 'high' ? '#16a34a' : result.quality === 'medium' ? '#d97706' : '#dc2626';
+              itemsHtml += `
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 15px; font-weight: 700; color: #0f172a;">결과 ${index + 1} - ${result.type || 'vesselCad'}</span>
+                    <span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: ${qualityColor}; color: white;">품질: ${(result.quality || 'HIGH').toUpperCase()}</span>
+                  </div>
+                  <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">
+                    생성 시간: ${new Date(result.timestamp).toLocaleString('ko-KR')} | 규격: ${result.options?.width || 2048}x${result.options?.height || 1536}
+                  </div>
+                  <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; color: #1e293b; font-family: monospace;">${result.prompt}</div>
+                </div>
+              `;
+            });
+
+            container.innerHTML = `
+              <div style="border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 20px;">
+                <div style="font-size: 11px; font-weight: 700; color: #0284c7; letter-spacing: 1px;">성동ISET • CREATIVE CANVAS ENTERPRISE</div>
+                <h1 style="font-size: 22px; font-weight: 900; margin: 6px 0; color: #0f172a;">크리에이티브 캔버스 - 생성 결과 보고서</h1>
+                <p style="font-size: 12px; color: #64748b; margin: 0;">생성일: ${new Date().toLocaleDateString('ko-KR')} (총 ${this.results.length}건)</p>
+              </div>
+              ${itemsHtml}
+            `;
+
+            document.body.appendChild(container);
+            try {
+              const canvas = await window.html2canvas(container, { scale: 2, useCORS: true });
+              const imgData = canvas.toDataURL('image/jpeg', 0.95);
+              const doc = new jsPDF('p', 'mm', 'a4');
+              const imgWidth = 210;
+              const pageHeight = 297;
+              const imgHeight = (canvas.height * imgWidth) / canvas.width;
+              let heightLeft = imgHeight;
+              let position = 0;
+
+              doc.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+              heightLeft -= pageHeight;
+
+              while (heightLeft > 0) {
+                position = heightLeft - imgHeight;
+                doc.addPage();
+                doc.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+              }
+
+              doc.save('creative-canvas-results.pdf');
+              return;
+            } catch (e) {
+              console.warn('html2canvas export fallback to standard jsPDF:', e);
+            } finally {
+              if (document.body.contains(container)) {
+                document.body.removeChild(container);
+              }
+            }
+          }
+
+          // Fallback
+          const doc = new jsPDF();
+          doc.setFontSize(18);
+          doc.text('Creative Canvas - Result Report', 105, 15, null, null, 'center');
+          doc.setFontSize(10);
+          doc.text(`Generated: ${new Date().toLocaleString()}`, 105, 23, null, null, 'center');
+          let yPos = 35;
+          this.results.forEach((result, index) => {
+            if (yPos > 250) { doc.addPage(); yPos = 20; }
+            doc.setFontSize(12);
+            doc.text(`Result ${index + 1}: ${result.type || 'vesselCad'} [${result.quality || 'high'}]`, 20, yPos);
+            yPos += 8;
+            const prompt = result.prompt.length > 120 ? result.prompt.substring(0, 120) + '...' : result.prompt;
+            doc.setFontSize(9);
+            doc.text(`Prompt: ${prompt}`, 20, yPos);
+            yPos += 14;
+          });
+          doc.save('creative-canvas-results.pdf');
+        }
+
+        updateUI() {
+          // UI 업데이트 로직 (실제 구현 필요)
+          console.log('결과 업데이트:', this.results.length);
+        }
+      }
+
+      // ================================================
+      // 핵심 개선 4: API 키 관리 및 초기화
+      // ================================================
+      class AppInitializer {
+        constructor() {
+          this.apiKey = null;
+          this.client = null;
+          this.processor = new ResultProcessor();
+        }
+
+        async init() {
+          // 서버 환경 또는 로컬 스토리지 키 관리
+          this.apiKey = localStorage.getItem('GEMINI_API_KEY') || 'SYSTEM_SERVER_KEY';
+          this.client = new GeminiAPIClient(this.apiKey);
+          console.log('크리에이티브 캔버스 초기화 완료 (AppInitializer ready)');
+          return true;
+        }
+
+        showSetupWarning() {
+          const warning = document.createElement('div');
+          warning.className = 'api-status status-warning';
+          warning.innerHTML = `
+            ⚠️ API 키 설정 필요<br>
+            <small>.env.local 파일에 GEMINI_API_KEY를 설정하세요</small>
+          `;
+          document.body.appendChild(warning);
+          
+          // 5초 후 자동으로 사라짐
+          setTimeout(() => {
+            warning.remove();
+          }, 5000);
+        }
+
+        // 프롬프트 생성 헬퍼 메서드
+        createPrompt(type, userInput) {
+          const template = PROMPT_TEMPLATES[type];
+          if (!template) {
+            throw new Error(`알 수 없는 프롬프트 유형: ${type}`);
+          }
+          
+          return template(userInput);
+        }
+
+        // 이미지 생성 요청 처리 (designEngine 원스톱 고레벨 API 연동)
+        async generateImage(type, userInput, options = {}) {
+          try {
+            const style = options.style || 'blueprint';
+            let result = null;
+
+            // 1. 선박 CAD 설계 요청인 경우
+            if (type === 'vesselCad' || type === 'vessel') {
+              try {
+                const response = await fetch('/api/design/vessel', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ userInput, style })
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  result = {
+                    type: type,
+                    prompt: data.prompt,
+                    spec: data.spec,
+                    image: data.base64 ? `data:${data.mimeType || 'image/png'};base64,${data.base64}` : null,
+                    base64: data.base64 || null,
+                    mimeType: data.mimeType || 'image/png',
+                    options: options,
+                    timestamp: new Date().toISOString(),
+                    quality: 'high',
+                    status: 'success'
+                  };
+                }
+              } catch (apiErr) {
+                console.warn('서버 선박 CAD API 응답 지연/오류, 클라이언트 템플릿으로 대체:', apiErr);
+              }
+            } 
+            // 2. 건축 렌더링 요청인 경우
+            else if (type === 'architecturalRender' || type === 'architecture') {
+              try {
+                const response = await fetch('/api/design/architecture', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ userInput })
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  result = {
+                    type: type,
+                    prompt: data.prompt,
+                    spec: data.spec,
+                    image: data.base64 ? `data:${data.mimeType || 'image/png'};base64,${data.base64}` : null,
+                    base64: data.base64 || null,
+                    mimeType: data.mimeType || 'image/png',
+                    options: options,
+                    timestamp: new Date().toISOString(),
+                    quality: 'high',
+                    status: 'success'
+                  };
+                }
+              } catch (apiErr) {
+                console.warn('서버 건축 렌더링 API 지연/오류, 클라이언트 템플릿으로 대체:', apiErr);
+              }
+            }
+
+            // 폴백: 템플릿 기반 프롬프트 생성
+            if (!result) {
+              const prompt = this.createPrompt(type, userInput);
+              result = {
+                type: type,
+                prompt: prompt,
+                options: options,
+                timestamp: new Date().toISOString(),
+                quality: this.assessQuality(prompt),
+                status: 'success'
+              };
+            }
+
+            this.processor.addResult(result);
+            window.latestVesselCadResult = result;
+            this.displayResultOnCanvas(result);
+            return result;
+            
+          } catch (error) {
+            console.error('이미지 생성 오류:', error);
+            throw error;
+          }
+        }
+
+        assessQuality(prompt) {
+          const qualityIndicators = {
+            high: ['4K', '8K', 'photorealistic', 'high resolution', 'detail', 'professional'],
+            medium: ['rendering', 'style', 'view', 'angle', 'lighting'],
+            low: []
+          };
+          
+          let score = 0;
+          
+          for (const [quality, keywords] of Object.entries(qualityIndicators)) {
+            for (const keyword of keywords) {
+              if (prompt.toLowerCase().includes(keyword.toLowerCase())) {
+                score++;
+                break;
+              }
+            }
+          }
+          
+          if (score >= 3) return 'high';
+          if (score >= 1) return 'medium';
+          return 'low';
+        }
+
+        // ================================================
+        // 캔버스에 이미지 표시 로직
+        // ================================================
+        displayResultOnCanvas(result) {
+          const canvas = document.getElementById('preview-canvas');
+          if (!canvas) {
+            console.warn('preview-canvas 요소를 찾을 수 없습니다.');
+            return null;
+          }
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return null;
+
+          const width = canvas.width || 800;
+          const height = canvas.height || 500;
+
+          // 배경 - 다크 네이비 테크니컬 엔지니어링 블루프린트
+          ctx.fillStyle = '#0a1526';
+          ctx.fillRect(0, 0, width, height);
+
+          // 그리드 라인 렌더링 (20px 단위)
+          ctx.strokeStyle = '#122644';
+          ctx.lineWidth = 1;
+          for (let x = 0; x < width; x += 25) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+          }
+          for (let y = 0; y < height; y += 25) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+          }
+
+          // 외곽 테크니컬 프레임 (ISO 128 표준 양식)
+          ctx.strokeStyle = '#0284c7';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(15, 15, width - 30, height - 30);
+          ctx.strokeStyle = '#0369a1';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(20, 20, width - 40, height - 40);
+
+          // 상단 엔지니어링 헤더
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = 'bold 15px "Noto Sans KR", monospace';
+          ctx.fillText('SUNGDONG ISET • NAVAL ARCHITECTURE CAD BLUEPRINT', 30, 42);
+
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '11px monospace';
+          ctx.fillText(`SPEC TYPE: ${(result.type || 'vesselCad').toUpperCase()}  |  QUALITY: ${(result.quality || 'HIGH').toUpperCase()}`, 30, 58);
+
+          // 선박 와이어프레임 CAD 제도 (선체, 벌브 선미, 화물창, 브릿지 구조)
+          const baseY = height * 0.62;
+          const hullStart = width * 0.12;
+          const hullEnd = width * 0.88;
+          const hullLength = hullEnd - hullStart;
+
+          // Waterline
+          ctx.strokeStyle = '#0ea5e9';
+          ctx.setLineDash([8, 4]);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(hullStart - 20, baseY);
+          ctx.lineTo(hullEnd + 20, baseY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = '#0284c7';
+          ctx.font = '10px monospace';
+          ctx.fillText('DESIGN WATER LINE (DWL)', hullEnd - 130, baseY - 6);
+
+          // Hull Contour (선체 프로파일)
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          // Stern (선미)
+          ctx.moveTo(hullStart, baseY - 50);
+          ctx.lineTo(hullStart + 40, baseY + 45); // Skeg/Keel start
+          ctx.lineTo(hullEnd - 60, baseY + 45);   // Keel flat bottom
+          ctx.quadraticCurveTo(hullEnd, baseY + 45, hullEnd, baseY + 15); // Bulbous bow
+          ctx.lineTo(hullEnd - 15, baseY - 55);  // Bow flare
+          ctx.lineTo(hullStart, baseY - 50);    // Main Deck
+          ctx.closePath();
+          ctx.stroke();
+
+          // 선체 내부 해칭 (약한 블루 틴트)
+          ctx.fillStyle = 'rgba(2, 132, 199, 0.08)';
+          ctx.fill();
+
+          // 화물창 격벽 (Bulkheads & Cargo Holds)
+          ctx.strokeStyle = '#0284c7';
+          ctx.lineWidth = 1.2;
+          const holds = 4;
+          const tankStart = hullStart + 70;
+          const tankEnd = hullEnd - 80;
+          const tankWidth = (tankEnd - tankStart) / holds;
+
+          for (let i = 0; i <= holds; i++) {
+            const bx = tankStart + i * tankWidth;
+            ctx.beginPath();
+            ctx.moveTo(bx, baseY - 50);
+            ctx.lineTo(bx, baseY + 45);
+            ctx.stroke();
+
+            if (i < holds) {
+              // 탱크 번호 및 돔 구조
+              ctx.fillStyle = '#7dd3fc';
+              ctx.font = 'bold 10px monospace';
+              ctx.fillText(`HOLD #${i + 1}`, bx + tankWidth * 0.28, baseY - 8);
+              ctx.beginPath();
+              ctx.arc(bx + tankWidth * 0.5, baseY - 50, tankWidth * 0.35, Math.PI, 0);
+              ctx.stroke();
+            }
+          }
+
+          // 선교 및 거주구 (Superstructure / Deckhouse)
+          const bridgeX = hullStart + 15;
+          const bridgeWidth = 50;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          ctx.fillRect(bridgeX, baseY - 115, bridgeWidth, 65);
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.8;
+          ctx.strokeRect(bridgeX, baseY - 115, bridgeWidth, 65);
+
+          // 레이더 마스트
+          ctx.beginPath();
+          ctx.moveTo(bridgeX + bridgeWidth / 2, baseY - 115);
+          ctx.lineTo(bridgeX + bridgeWidth / 2, baseY - 140);
+          ctx.moveTo(bridgeX + bridgeWidth / 2 - 12, baseY - 132);
+          ctx.lineTo(bridgeX + bridgeWidth / 2 + 12, baseY - 132);
+          ctx.stroke();
+
+          // 추진기 및 타 (Propeller & Rudder)
+          ctx.beginPath();
+          ctx.arc(hullStart + 10, baseY + 30, 10, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillRect(hullStart - 5, baseY + 18, 6, 26);
+
+          // 하단 우측 테크니컬 스펙 표기 블록 (Title Block)
+          const blockW = 260;
+          const blockH = 75;
+          const blockX = width - blockW - 25;
+          const blockY = height - blockH - 25;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+          ctx.fillRect(blockX, blockY, blockW, blockH);
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(blockX, blockY, blockW, blockH);
+
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = 'bold 11px monospace';
+          ctx.fillText('SUNGDONG ISET FUTURE SHIPBUILDING', blockX + 12, blockY + 20);
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '10px monospace';
+          ctx.fillText(`STATUS: ${(result.status || 'SUCCESS').toUpperCase()} | SCALE: 1:500`, blockX + 12, blockY + 36);
+          ctx.fillText(`TIMESTAMP: ${new Date(result.timestamp).toLocaleTimeString()}`, blockX + 12, blockY + 52);
+          ctx.fillText(`AUTH: AI STRATEGY OFFICE`, blockX + 12, blockY + 66);
+
+          return canvas;
+        }
+
+        // ================================================
+        // API 성능 추적 로직
+        // ================================================
+        trackPerformance(startTime, endTime, success) {
+          const duration = endTime - startTime;
+          console.log(`API 호출 시간: ${duration}ms, 성공: ${success}`);
+          
+          if (!this.performanceLogs) {
+            this.performanceLogs = [];
+          }
+          const record = {
+            startTime,
+            endTime,
+            duration,
+            durationMs: Math.round(duration),
+            success: Boolean(success),
+            timestamp: new Date().toISOString(),
+            formatted: `API 호출 시간: ${duration.toFixed(1)}ms, 성공: ${success}`
+          };
+          this.performanceLogs.unshift(record);
+          if (this.performanceLogs.length > 50) this.performanceLogs.pop();
+
+          try {
+            localStorage.setItem('PERFORMANCE_LOGS', JSON.stringify(this.performanceLogs));
+          } catch (e) {}
+
+          // 브라우저 커스텀 이벤트 발행 (React UI 연동 지원)
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('cad-performance-tracked', { detail: record }));
+          }
+          return record;
+        }
+
+        // ================================================
+        // 사용자 대화형 프롬프트 & 즉시 캔버스 생성
+        // ================================================
+        async promptAndGenerateVessel(defaults = {}) {
+          const startTime = performance.now();
+          let vesselType = defaults.vesselType || 'LNG선';
+          let tonnage = defaults.tonnage || '200000';
+          let features = defaults.features || '친환경, 자율운항';
+
+          try {
+            if (typeof window !== 'undefined' && typeof window.prompt === 'function') {
+              const inputVesselType = window.prompt('선박 유형을 입력하세요 (컨테이너선, 유조선, LNG선 등):', vesselType);
+              if (inputVesselType !== null && inputVesselType.trim()) vesselType = inputVesselType.trim();
+
+              const inputTonnage = window.prompt('톤수를 입력하세요 (예: 200000):', tonnage);
+              if (inputTonnage !== null && inputTonnage.trim()) tonnage = inputTonnage.trim();
+
+              const inputFeatures = window.prompt('특수 기능을 입력하세요 (예: 친환경, 자율운항):', features);
+              if (inputFeatures !== null && inputFeatures.trim()) features = inputFeatures.trim();
+            }
+          } catch (e) {
+            console.warn('prompt not available:', e);
+          }
+
+          const promptText = `${tonnage}톤급 ${vesselType}, ${features}`;
+          try {
+            const result = await this.generateImage('vesselCad', promptText, { width: 2048, height: 1536, quality: 'high' });
+            this.displayResultOnCanvas(result);
+            const endTime = performance.now();
+            this.trackPerformance(startTime, endTime, true);
+            return result;
+          } catch (err) {
+            const endTime = performance.now();
+            this.trackPerformance(startTime, endTime, false);
+            throw err;
+          }
+        }
+      }
+
+      // ================================================
+      // 앱 초기화 및 전역 등록
+      // ================================================
+      const app = new AppInitializer();
+
+      // 전역 스탠드얼론 함수 등록 (사용자 요청 시그니처 100% 호환)
+      function displayResultOnCanvas(result) {
+        return app.displayResultOnCanvas(result);
+      }
+      function trackPerformance(startTime, endTime, success) {
+        return app.trackPerformance(startTime, endTime, success);
+      }
+
+      // 전역 클래스 및 인스턴스 전역 노출 (사용자 스크립트 직결 지원)
+      window.AppInitializer = AppInitializer;
+      window.ResultProcessor = ResultProcessor;
+      window.GeminiAPIClient = GeminiAPIClient;
+      window.PROMPT_TEMPLATES = PROMPT_TEMPLATES;
+      window.displayResultOnCanvas = displayResultOnCanvas;
+      window.trackPerformance = trackPerformance;
+      window.app = app;
+
+      // 원스톱 고레벨 API 전역 바인딩 (designEngine.ts 계약)
+      window.designVessel = async (userInput, style = "blueprint") => {
+        return await app.generateImage('vesselCad', userInput, { style });
+      };
+      window.renderArchitecture = async (userInput) => {
+        return await app.generateImage('architecturalRender', userInput);
+      };
+      window.expandVesselSpec = async (userInput) => {
+        const res = await fetch('/api/design/expand-vessel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userInput })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return data.spec;
+        }
+        return null;
+      };
+
+      window.CreativeCanvas = {
+        app: app,
+        AppInitializer: AppInitializer,
+        ResultProcessor: ResultProcessor,
+        PROMPT_TEMPLATES: PROMPT_TEMPLATES,
+        GeminiAPIClient: GeminiAPIClient,
+        displayResultOnCanvas: displayResultOnCanvas,
+        trackPerformance: trackPerformance,
+        designVessel: window.designVessel,
+        renderArchitecture: window.renderArchitecture,
+        expandVesselSpec: window.expandVesselSpec
+      };
+
+      // DOM이 로드된 후 자동 초기화 및 실행 예시
+      document.addEventListener('DOMContentLoaded', async () => {
+        await app.init();
+        
+        // 15만톤급 LNG 운반선 선박 CAD 예시 실행
+        const result = await app.generateImage(
+          'vesselCad', 
+          '15만톤급 LNG 운반선, 친환경 추진 시스템',
+          { width: 2048, height: 1536, quality: 'high' }
+        );
+        window.latestVesselCadResult = result;
+        console.log('생성 결과:', result);
+        console.log('프롬프트:', result.prompt);
+        console.log('품질:', result.quality);
+      });
+    </script>
+</body>
+</html>

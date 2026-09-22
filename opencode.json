@@ -1,0 +1,20 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "accountingwiki": {
+      "type": "remote",
+      "url": "https://accountingwiki.co.kr/api/mcp",
+      "enabled": true
+    },
+    "opendart": {
+      "type": "remote",
+      "url": "https://open-dart-mcp-server.vercel.app/api/mcp?opendart_key={env:OPENDART_API_KEY}",
+      "enabled": true
+    },
+    "korean-law": {
+      "type": "remote",
+      "url": "https://mcp.gomdori.app/law?oc={env:LAW_OC}",
+      "enabled": true
+    }
+  }
+}

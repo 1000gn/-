@@ -1,0 +1,495 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role-based access",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["owner", "secretary", "advisor", "viewer", "admin"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "email", "role"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Top-level management project",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "environment": { "type": "string", "enum": ["test", "real"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["projectId", "name", "status"]
+    },
+    "Person": {
+      "title": "Person",
+      "description": "Key personnel and stakeholders",
+      "type": "object",
+      "properties": {
+        "personId": { "type": "string" },
+        "name": { "type": "string" },
+        "position": { "type": "string" },
+        "organization": { "type": "string" },
+        "role": { "type": "string" },
+        "expertise": { "type": "string" },
+        "problemSolving": { "type": "number" },
+        "execution": { "type": "number" },
+        "communication": { "type": "number" },
+        "influence": { "type": "number" },
+        "trust": { "type": "number" },
+        "risk": { "type": "string" },
+        "assessment": { "type": "string" },
+        "sourceRefs": { "type": "array" },
+        "projectRefs": { "type": "array" },
+        "status": { "type": "string", "enum": ["Draft", "AI Suggested", "Confirmed", "Archived"] },
+        "isArchived": { "type": "boolean" },
+        "environment": { "type": "string", "enum": ["test", "real"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["personId", "name"]
+    },
+    "Document": {
+      "title": "Document",
+      "description": "Document Knowledge Base item",
+      "type": "object",
+      "properties": {
+        "documentId": { "type": "string" },
+        "fileName": { "type": "string" },
+        "displayName": { "type": "string" },
+        "documentType": { "type": "string" },
+        "projectId": { "type": "string" },
+        "domain": { "type": "string" },
+        "referenceDate": { "type": "string" },
+        "createdDate": { "type": "string" },
+        "receivedDate": { "type": "string" },
+        "author": { "type": "string" },
+        "source": { "type": "string" },
+        "version": { "type": "string" },
+        "importance": { "type": "string" },
+        "reliability": { "type": "string" },
+        "validity": { "type": "string" },
+        "status": { "type": "string" },
+        "fileSearchRef": { "type": "string" },
+        "storageRef": { "type": "string" },
+        "rawContent": { "type": "string" },
+        "summary": { "type": "string" },
+        "keyPoints": { "type": "array" },
+        "extractedFacts": { "type": "array" },
+        "relatedPeople": { "type": "array" },
+        "relatedIssues": { "type": "array" },
+        "relatedRisks": { "type": "array" },
+        "relatedDecisions": { "type": "array" },
+        "relatedActions": { "type": "array" },
+        "analysisResult": { "type": "object" },
+        "isArchived": { "type": "boolean" },
+        "environment": { "type": "string", "enum": ["test", "real"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["documentId", "fileName"]
+    },
+    "Issue": {
+      "title": "Issue",
+      "description": "Strategic problem issue",
+      "type": "object",
+      "properties": {
+        "issueId": { "type": "string" },
+        "title": { "type": "string" },
+        "projectId": { "type": "string" },
+        "domain": { "type": "string" },
+        "symptom": { "type": "string" },
+        "problem": { "type": "string" },
+        "cause": { "type": "string" },
+        "impact": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "number" },
+        "ownerId": { "type": "string" },
+        "relatedPeople": { "type": "array" },
+        "relatedDocuments": { "type": "array" },
+        "relatedRisks": { "type": "array" },
+        "relatedDecisions": { "type": "array" },
+        "itemStatus": { "type": "string", "enum": ["Draft", "AI Suggested", "Confirmed", "Archived"] },
+        "isArchived": { "type": "boolean" },
+        "environment": { "type": "string", "enum": ["test", "real"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["issueId", "title"]
+    },
+    "Risk": {
+      "title": "Risk",
+      "description": "Risk item with probability and early signals",
+      "type": "object",
+      "properties": {
+        "riskId": { "type": "string" },
+        "title": { "type": "string" },
+        "projectId": { "type": "string" },
+        "domain": { "type": "string" },
+        "cause": { "type": "string" },
+        "probability": { "type": "string" },
+        "impact": { "type": "string" },
+        "detectability": { "type": "string" },
+        "responseCapability": { "type": "string" },
+        "businessFailureImpact": { "type": "string" },
+        "earlySignals": { "type": "string" },
+        "countermeasures": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "deadline": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "number" },
+        "relatedPeople": { "type": "array" },
+        "relatedDocuments": { "type": "array" },
+        "relatedIssues": { "type": "array" },
+        "relatedDecisions": { "type": "array" },
+        "itemStatus": { "type": "string", "enum": ["Draft", "AI Suggested", "Confirmed", "Archived"] },
+        "isArchived": { "type": "boolean" },
+        "environment": { "type": "string", "enum": ["test", "real"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["riskId", "title"]
+    },
+    "Decision": {
+      "title": "Decision",
+      "description": "Executive decision item and decision memory",
+      "type": "object",
+      "properties": {
+        "decisionId": { "type": "string" },
+        "title": { "type": "string" },
+        "projectId": { "type": "string" },
+        "background": { "type": "string" },
+        "facts": { "type": "array" },
+        "problem": { "type": "string" },
+        "optionA": { "type": "object" },
+        "optionB": { "type": "object" },
+        "optionC": { "type": "object" },
+        "riskComparison": { "type": "string" },
+        "feasibility": { "type": "string" },
+        "recommendation": { "type": "string" },
+        "executiveOpinion": { "type": "string" },
+        "chairmanDecision": { "type": "string" },
+        "decisionDate": { "type": "string" },
+        "delayRisk": { "type": "string" },
+        "status": { "type": "string" },
+        "relatedDocuments": { "type": "array" },
+        "relatedIssues": { "type": "array" },
+        "relatedRisks": { "type": "array" },
+        "relatedActions": { "type": "array" },
+        "decisionReason": { "type": "string" },
+        "assumptions": { "type": "array" },
+        "executionResult": { "type": "string" },
+        "retrospective": { "type": "string" },
+        "lessonsLearned": { "type": "array" },
+        "itemStatus": { "type": "string", "enum": ["Draft", "AI Suggested", "Confirmed", "Archived"] },
+        "isArchived": { "type": "boolean" },
+        "environment": { "type": "string", "enum": ["test", "real"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["decisionId", "title"]
+    },
+    "Action": {
+      "title": "Action",
+      "description": "Tactical action plan linked to decisions",
+      "type": "object",
+      "properties": {
+        "actionId": { "type": "string" },
+        "title": { "type": "string" },
+        "projectId": { "type": "string" },
+        "decisionId": { "type": "string" },
+        "issueId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "collaborators": { "type": "array" },
+        "startDate": { "type": "string" },
+        "deadline": { "type": "string" },
+        "priority": { "type": "number" },
+        "status": { "type": "string", "enum": ["planned", "in_progress", "delayed", "completed", "verified"] },
+        "progress": { "type": "number" },
+        "blocker": { "type": "string" },
+        "risk": { "type": "string" },
+        "completionCriteria": { "type": "string" },
+        "result": { "type": "string" },
+        "followUp": { "type": "string" },
+        "executionMode": { "type": "string" },
+        "itemStatus": { "type": "string", "enum": ["Draft", "AI Suggested", "Confirmed", "Archived"] },
+        "isArchived": { "type": "boolean" },
+        "environment": { "type": "string", "enum": ["test", "real"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["actionId", "title"]
+    },
+    "Meeting": {
+      "title": "Meeting",
+      "description": "Strategic and Chairman meetings",
+      "type": "object",
+      "properties": {
+        "meetingId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "date": { "type": "string" },
+        "channel": { "type": "string" },
+        "purpose": { "type": "string" },
+        "participants": { "type": "array" },
+        "agenda": { "type": "array" },
+        "keyPoints": { "type": "array" },
+        "decisionRefs": { "type": "array" },
+        "actionRefs": { "type": "array" },
+        "riskRefs": { "type": "array" },
+        "followUp": { "type": "string" },
+        "environment": { "type": "string", "enum": ["test", "real"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["meetingId", "purpose"]
+    },
+    "Stakeholder": {
+      "title": "Stakeholder",
+      "description": "External and internal stakeholder analysis",
+      "type": "object",
+      "properties": {
+        "stakeholderId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "projectId": { "type": "string" },
+        "influence": { "type": "string" },
+        "interest": { "type": "string" },
+        "concerns": { "type": "array" },
+        "requests": { "type": "array" },
+        "relationshipStatus": { "type": "string" },
+        "expectedBehavior": { "type": "string" },
+        "responsePlan": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "environment": { "type": "string", "enum": ["test", "real"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["stakeholderId", "name"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Chronological timeline event",
+      "type": "object",
+      "properties": {
+        "eventId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "date": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "personRefs": { "type": "array" },
+        "documentRefs": { "type": "array" },
+        "issueRefs": { "type": "array" },
+        "riskRefs": { "type": "array" },
+        "decisionRefs": { "type": "array" },
+        "result": { "type": "string" },
+        "environment": { "type": "string", "enum": ["test", "real"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["eventId", "title", "date"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Audit trail for critical business data changes",
+      "type": "object",
+      "properties": {
+        "logId": { "type": "string" },
+        "userId": { "type": "string" },
+        "entityType": { "type": "string" },
+        "entityId": { "type": "string" },
+        "action": { "type": "string" },
+        "before": { "type": "object" },
+        "after": { "type": "object" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["logId", "userId", "entityType", "entityId", "action", "timestamp"]
+    },
+    "Suggestion": {
+      "title": "Suggestion",
+      "description": "AI Suggested objects pending user confirmation",
+      "type": "object",
+      "properties": {
+        "suggestionId": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "reason": { "type": "string" },
+        "evidenceRefs": { "type": "array" },
+        "relatedRefs": { "type": "array" },
+        "confidence": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "payload": { "type": "object" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["suggestionId", "type", "title", "status"]
+    },
+    "Evidence": {
+      "title": "Evidence",
+      "description": "Verified fact evidence item",
+      "type": "object",
+      "properties": {
+        "evidenceId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "statement": { "type": "string" },
+        "source": { "type": "string" },
+        "sourceType": { "type": "string" },
+        "reliability": { "type": "string" },
+        "confidence": { "type": "number" },
+        "status": { "type": "string" },
+        "environment": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["evidenceId", "statement", "sourceType"]
+    },
+    "EvidenceRequest": {
+      "title": "EvidenceRequest",
+      "description": "Formal request for missing evidence with canonical lifecycle",
+      "type": "object",
+      "properties": {
+        "evidenceRequestId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "decisionId": { "type": "string" },
+        "question": { "type": "string" },
+        "purpose": { "type": "string" },
+        "requestedEvidence": { "type": "array" },
+        "priority": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"] },
+        "reason": { "type": "string" },
+        "minimumRequiredEvidence": { "type": "array" },
+        "optionalEvidence": { "type": "array" },
+        "alternativeEvidence": { "type": "array" },
+        "externalSearchAllowed": { "type": "boolean" },
+        "externalSearchStatus": { "type": "string" },
+        "status": { "type": "string", "enum": ["REQUESTED", "WAITING_FOR_USER", "WAITING_FOR_SOURCE", "PARTIALLY_RECEIVED", "RECEIVED", "VERIFIED", "NO_LONGER_NEEDED", "EXPIRED"] },
+        "requestedAt": { "type": "string" },
+        "requestedBy": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "owner": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "receivedEvidenceRefs": { "type": "array" },
+        "decisionImpact": { "type": "string" },
+        "confidenceBefore": { "type": "number" },
+        "confidenceAfter": { "type": "number" },
+        "lastEvaluatedAt": { "type": "string" },
+        "environment": { "type": "string", "enum": ["TEST", "REAL"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["evidenceRequestId", "question", "status"]
+    },
+    "EvidenceRequestEvent": {
+      "title": "EvidenceRequestEvent",
+      "description": "Immutable lifecycle audit event for evidence requests",
+      "type": "object",
+      "properties": {
+        "eventId": { "type": "string" },
+        "evidenceRequestId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "environment": { "type": "string", "enum": ["TEST", "REAL"] },
+        "type": { "type": "string" },
+        "actorId": { "type": "string" },
+        "actorRole": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "details": { "type": "object" }
+      },
+      "required": ["eventId", "evidenceRequestId", "projectId", "type", "timestamp"]
+    },
+    "ProjectMembership": {
+      "title": "ProjectMembership",
+      "description": "User project membership and RBAC role within project",
+      "type": "object",
+      "properties": {
+        "membershipId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "userId": { "type": "string" },
+        "role": { "type": "string", "enum": ["OWNER", "ADMIN", "EXECUTIVE", "ADVISOR", "MEMBER", "VIEWER"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "INVITED", "REVOKED"] },
+        "environment": { "type": "string", "enum": ["TEST", "REAL"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["membershipId", "projectId", "userId", "role", "status"]
+    }
+  },
+  "firestore": {
+    "/memberships/{membershipId}": {
+      "schema": "ProjectMembership",
+      "description": "Project membership and access control records"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and roles"
+    },
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Strategic projects"
+    },
+    "/people/{personId}": {
+      "schema": "Person",
+      "description": "Key personnel and management network"
+    },
+    "/documents/{documentId}": {
+      "schema": "Document",
+      "description": "Document Knowledge Base"
+    },
+    "/issues/{issueId}": {
+      "schema": "Issue",
+      "description": "Core issues"
+    },
+    "/risks/{riskId}": {
+      "schema": "Risk",
+      "description": "Key business risks"
+    },
+    "/decisions/{decisionId}": {
+      "schema": "Decision",
+      "description": "Executive decisions and decision memories"
+    },
+    "/actions/{actionId}": {
+      "schema": "Action",
+      "description": "Action tracker"
+    },
+    "/meetings/{meetingId}": {
+      "schema": "Meeting",
+      "description": "Strategic meeting records"
+    },
+    "/stakeholders/{stakeholderId}": {
+      "schema": "Stakeholder",
+      "description": "Stakeholder mapping"
+    },
+    "/events/{eventId}": {
+      "schema": "Event",
+      "description": "Timeline event log"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Immutable audit trail"
+    },
+    "/suggestions/{suggestionId}": {
+      "schema": "Suggestion",
+      "description": "AI-suggested candidates for review"
+    },
+    "/evidence/{evidenceId}": {
+      "schema": "Evidence",
+      "description": "Verified fact evidence catalog"
+    },
+    "/evidenceRequests/{requestId}": {
+      "schema": "EvidenceRequest",
+      "description": "Formal requests for missing information"
+    },
+    "/evidenceRequestEvents/{eventId}": {
+      "schema": "EvidenceRequestEvent",
+      "description": "Lifecycle audit events for evidence requests"
+    }
+  }
+}

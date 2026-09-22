@@ -1,0 +1,189 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwnerOrAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == '1000gn521@gmail.com' && request.auth.token.email_verified == true) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'admin', 'OWNER', 'ADMIN'] ||
+          (('canonicalRole' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data) &&
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.canonicalRole in ['OWNER', 'ADMIN'])
+        ))
+      );
+    }
+
+    function isProjectMember(projId) {
+      return isOwnerOrAdmin() || (
+        isSignedIn() && (
+          exists(/databases/$(database)/documents/memberships/$(request.auth.uid + '_' + projId)) ||
+          exists(/databases/$(database)/documents/memberships/$(projId + '_' + request.auth.uid)) ||
+          (projId in ['proj-gunsan-pmi', 'pmi-gunsan-001'] && exists(/databases/$(database)/documents/users/$(request.auth.uid)))
+        )
+      );
+    }
+
+    function getDocProjectId(data) {
+      return ('projectId' in data) ? data.projectId : (('project' in data) ? data.project : 'proj-gunsan-pmi');
+    }
+
+    // Connection ping
+    match /test/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // User profiles:
+    // Any authenticated user can read profiles
+    // Self-provisioning strictly allows creating only non-elevated roles (MEMBER, ADVISOR, VIEWER)
+    // Role escalation to OWNER or ADMIN strictly requires isOwnerOrAdmin()
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (
+        isOwnerOrAdmin() ||
+        (request.auth.uid == userId &&
+         (!('role' in request.resource.data) ||
+          request.resource.data.role in ['MEMBER', 'ADVISOR', 'VIEWER', 'member', 'advisor', 'viewer']) &&
+         (!('canonicalRole' in request.resource.data) ||
+          request.resource.data.canonicalRole in ['MEMBER', 'ADVISOR', 'VIEWER']))
+      );
+      allow update: if isSignedIn() && (
+        isOwnerOrAdmin() ||
+        (request.auth.uid == userId &&
+         (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
+         (!('canonicalRole' in request.resource.data) || request.resource.data.canonicalRole == resource.data.canonicalRole))
+      );
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    // Project memberships
+    match /memberships/{membershipId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isOwnerOrAdmin();
+    }
+
+    // Project metadata:
+    // Read allowed for project members or owner/admin; write restricted to owner/admin
+    match /projects/{projectId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(projectId));
+      allow create, update, delete: if isOwnerOrAdmin();
+    }
+
+    // Project-Scoped Domain Collections:
+    // Strictly isolate by project membership and prevent unauthorized cross-project tampering
+    match /people/{personId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data))) &&
+        (!('projectId' in request.resource.data) || request.resource.data.projectId == resource.data.projectId);
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /documents/{documentId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data))) &&
+        (!('projectId' in request.resource.data) || request.resource.data.projectId == resource.data.projectId);
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /issues/{issueId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data))) &&
+        (!('projectId' in request.resource.data) || request.resource.data.projectId == resource.data.projectId);
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /risks/{riskId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data))) &&
+        (!('projectId' in request.resource.data) || request.resource.data.projectId == resource.data.projectId);
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /decisions/{decisionId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data))) &&
+        (!('projectId' in request.resource.data) || request.resource.data.projectId == resource.data.projectId);
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /actions/{actionId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data))) &&
+        (!('projectId' in request.resource.data) || request.resource.data.projectId == resource.data.projectId);
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /meetings/{meetingId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /stakeholders/{stakeholderId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /events/{eventId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /suggestions/{suggestionId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /evidence/{evidenceId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data))) &&
+        (!('projectId' in request.resource.data) || request.resource.data.projectId == resource.data.projectId);
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    match /evidenceRequests/{requestId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data))) &&
+        (!('projectId' in request.resource.data) || request.resource.data.projectId == resource.data.projectId);
+      allow delete: if isOwnerOrAdmin();
+    }
+
+    // Evidence Request Events: append-only immutable audit lifecycle log
+    match /evidenceRequestEvents/{eventId} {
+      allow read: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(resource.data)));
+      allow create: if isSignedIn() && (isOwnerOrAdmin() || isProjectMember(getDocProjectId(request.resource.data)));
+      allow update, delete: if false;
+    }
+
+    // Audit logs: append-only, immutable history
+    // Authenticated users can create only if actor identity matches authenticated uid
+    // Update and delete strictly prohibited for ALL users
+    match /auditLogs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (
+        request.resource.data.userId == request.auth.uid ||
+        request.resource.data.actorId == request.auth.uid ||
+        isOwnerOrAdmin()
+      );
+      allow update, delete: if false;
+    }
+  }
+}

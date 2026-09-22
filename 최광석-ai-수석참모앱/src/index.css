@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+body {
+  color: #000000;
+  background-color: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+}
+
+::placeholder {
+  color: #334155 !important;
+  opacity: 1 !important;
+}
